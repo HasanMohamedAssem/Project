@@ -1,0 +1,241 @@
+#include <iostream>
+#include <string>
+#include <map>
+#include <fstream>
+#include <stdio.h>
+ 
+ 
+using namespace std;
+ 
+char Variable;
+map <long long, long long> ToMap(string Input)
+{
+	// key : power , value : coefficent
+	map <long long, long long> mp;
+	// Number:Coefficient , Power:power ,LastSign: +ve(1) or -ve(-1)
+	long long Number = 0, Power = 0, LastSign = 1;
+	//Pow: Reading a power , VariableFound: Reading a variable
+	bool Pow = 0, VariableFound = 0 ;
+	for (int i = 0; i < Input.size(); i++)
+	{
+		if ((Input[i] >= 'a' && Input[i] <= 'z') || (Input[i] >= 'A' && Input[i] <= 'Z'))
+		{
+			Variable = Input[i];
+			VariableFound = 1;
+		}
+		else if (Input[i] == '^')
+			Pow = 1;
+		else if (Input[i] == '+' || Input[i] == '-')
+		{
+			Pow = 0;
+			// in case of x (equals to x^1)
+			if (Power == 0 && VariableFound)
+				Power = 1;
+			// in case of x (equals to 1x)
+			if (VariableFound && Number == 0)
+				Number = 1;
+			mp[Power] += Number * LastSign;
+			// determining if the next expression will be +ve or -ve
+			if (Input[i] == '-') 
+				LastSign = -1;
+			else 
+				LastSign = 1;
+			VariableFound = 0;
+			Power = 0;
+			Number = 0;
+		}
+		// getting the power number and storing it in Power
+		// getting the coefficient number and storing it in Number
+		// '0' = 48 in ascii ( '3' - '0' = 3 )
+		// example 321x -> Number = 0*10 + '3' - '0' = 3 -> Number = 3*10 + '2' - '0' = 32 -> Number = 32*10 + '1' - '0' = 321  
+		else if (Input[i] >= '0' && Input[i] <= '9')
+		{
+			Pow == 1 ? Power = (Power * 10) + (Input[i] - '0') : Number = (Number * 10) + (Input[i] - '0');
+		}
+	}
+	return mp;
+}
+//addition
+map<long long, long long> Add(map<long long, long long>mp1, map<long long, long long>mp2)
+{
+	map<long long, long long> Ans;
+	for (map<long long, long long>::iterator it = mp1.begin(); it != mp1.end(); it++)
+		Ans[it->first] += it->second;
+	for (map<long long, long long>::iterator it = mp2.begin(); it != mp2.end(); it++)  
+		Ans[it->first] += it->second;
+	return Ans;
+}
+//subtraction
+map<long long, long long> Subtract(map<long long, long long>mp1, map<long long, long long>mp2)
+{
+	map<long long, long long> Ans;
+	for (map<long long, long long>::iterator it = mp1.begin(); it != mp1.end(); it++)  
+		Ans[it->first] += it->second;
+	for (map<long long, long long>::iterator it = mp2.begin(); it != mp2.end(); it++)  
+		Ans[it->first] -= it->second;
+	return Ans;
+}
+//multiplication
+map<long long, long long> Multiply(map<long long, long long>mp1, map<long long, long long>mp2)
+{
+	map<long long, long long> Ans;
+	for (map<long long, long long>::iterator it1 = mp1.begin(); it1 != mp1.end(); it1++)
+		for (map<long long, long long>::iterator it2 = mp2.begin(); it2 != mp2.end(); it2++)
+			Ans[it1->first + it2->first] += it1->second * it2->second;
+	return Ans;
+}
+ 
+ 
+//display
+string Display(map<long long, long long>Ans)
+{
+	string fullEQ;
+	bool FirstTime = 1 , Zero = 1;
+	for (map<long long, long long>::reverse_iterator it = Ans.rbegin(); it != Ans.rend(); it++)
+	{
+		if (it->second == 0)
+			continue;
+		Zero = 0;
+		// to put '-' if first coefficent is -ve and not put '+' if first coefficent is +ve
+		if (FirstTime)
+		{
+			if (it->second < 0) {
+				fullEQ += '-';
+			}
+			FirstTime = 0;
+		}
+		else
+		{
+			if (it->second < 0) {
+				fullEQ += " - ";
+			}
+			else {
+				fullEQ += " + ";
+			}
+		}
+		if (it->first == 0)
+		{
+			fullEQ += to_string(abs(it->second));
+		}
+		else
+		{
+			// 1x -> x
+			if (it->second != 1 && it->second!= -1) {
+				fullEQ += to_string(abs(it->second));
+			}
+			fullEQ += Variable;
+			// adding power if power != 1
+			if (it->first != 1) {
+				fullEQ += '^';
+				fullEQ += to_string(it->first);
+			}
+		}
+	}
+	if (Zero)
+	{
+		fullEQ += '0';
+	}
+	return fullEQ;
+}
+ 
+ 
+ 
+int main()
+{
+	fstream fileRead("History.txt", ios::in);
+	fstream fileWrite("History.txt", ios_base::app | ios_base::out);
+	map<string, string> history;
+	string key, val;
+	fileRead.seekg(0);
+	while (fileRead.good())
+	{
+		getline(fileRead, key);
+		if (!key.empty())
+			getline(fileRead, val);
+		else val = "";
+		history[key] = val;
+	}
+	map<string, string>::iterator it = history.begin();
+	map <string, string> newHistory;
+ 
+	bool WantInput = 1;
+	while (WantInput)
+	{
+		int i = 0;
+		map <long long, long long> mp1, mp2;
+		string Input1, Input2;
+		char Operation;
+		cout << "Enter first equation: ";
+		getline(cin, Input1);
+		cout << "Enter second equation: ";
+		getline(cin, Input2);
+		mp1 = ToMap(Input1 + '+');
+		mp2 = ToMap(Input2 + '+');
+		bool WantOperation = 1 ;
+		while (WantOperation)
+		{
+			cout << "Enter Operation ( +, -, * ): ";
+			cin >> Operation;
+ 
+			// if there is a value for the key of history map where the key = input1 + op + input2
+			if (!(history[Input1 + Operation + Input2].empty()))
+			{
+				cout << "Answer: " << history[Input1 + Operation + Input2] << "\t [From History]" << endl;
+			}
+			// checking if operation is + or * so that for example 3x+2x = 2x+3x would have same solution despite order of input
+			else if (!(history[Input2 + Operation + Input1].empty()) && (Operation == '+' || Operation == '*'))
+			{
+				cout << "Answer: " << history[Input2 + Operation + Input1] << "\t [From History]" << endl;
+			}
+			else 
+			{
+				if (Operation == '+') {
+					cout << Display(Add(mp1, mp2));
+					newHistory[Input1 + Operation + Input2] = Display(Add(mp1, mp2));
+				}
+				else if (Operation == '-') {
+					cout << Display(Subtract(mp1, mp2));
+					newHistory[Input1 + Operation + Input2] = Display(Subtract(mp1, mp2));
+				}
+				else if (Operation == '*') {
+					cout << Display(Multiply(mp1, mp2));
+					newHistory[Input1 + Operation + Input2] = Display(Multiply(mp1, mp2));
+				}
+				else           
+					cout << "Your choice is not found" << endl;
+				cout << endl;
+			}
+ 
+			cout << "Do you want more operations on the two inputs ( 1, 0 ): ";
+			cin >> WantOperation;
+ 
+		}
+		cout << "Do you want more Inputs ( 1, 0 ): ";
+		cin >> WantInput;
+	}
+ 
+ 
+	if (!fileWrite.is_open())
+	{
+		cout << "Error Opening The File!" << endl;
+	}
+	else
+	{
+		map<string, string>::iterator it = newHistory.begin();
+		for (it; it != newHistory.end(); it++)
+		{
+			if (it->first != "" || it->second != "")
+			{
+				fileWrite << it->first << endl;
+				fileWrite << it->second << endl;
+			}
+		}
+	}
+	return 0;
+}
+ 
+/*
+-3 x ^ 2 + 2 x ^ 1 - 3 = 0
+5 x ^ 3 - 7 x - 5 = 1
+*/
+ 
